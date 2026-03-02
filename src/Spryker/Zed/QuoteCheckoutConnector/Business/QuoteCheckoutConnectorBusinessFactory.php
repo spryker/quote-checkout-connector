@@ -19,9 +19,6 @@ use Spryker\Zed\QuoteCheckoutConnector\QuoteCheckoutConnectorDependencyProvider;
  */
 class QuoteCheckoutConnectorBusinessFactory extends AbstractBusinessFactory
 {
-    /**
-     * @return \Spryker\Zed\QuoteCheckoutConnector\Business\QuoteCheckoutCondition\QuoteCheckoutConditionInterface
-     */
     public function createQuoteCheckoutCondition(): QuoteCheckoutConditionInterface
     {
         return new QuoteCheckoutCondition(
@@ -31,17 +28,11 @@ class QuoteCheckoutConnectorBusinessFactory extends AbstractBusinessFactory
         );
     }
 
-    /**
-     * @return \Spryker\Zed\QuoteCheckoutConnector\Dependency\Client\QuoteCheckoutConnectorToStorageRedisClientInterface
-     */
     public function getStorageRedisClient(): QuoteCheckoutConnectorToStorageRedisClientInterface
     {
         return $this->getProvidedDependency(QuoteCheckoutConnectorDependencyProvider::CLIENT_STORAGE_REDIS);
     }
 
-    /**
-     * @return \Spryker\Zed\QuoteCheckoutConnector\Dependency\Service\QuoteCheckoutConnectorToUtilTextServiceInterface
-     */
     public function getUtilTextService(): QuoteCheckoutConnectorToUtilTextServiceInterface
     {
         return $this->getProvidedDependency(QuoteCheckoutConnectorDependencyProvider::SERVICE_UTIL_TEXT);

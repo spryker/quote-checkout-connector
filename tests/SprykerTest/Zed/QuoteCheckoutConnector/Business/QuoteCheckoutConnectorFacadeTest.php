@@ -44,9 +44,6 @@ class QuoteCheckoutConnectorFacadeTest extends Unit
      */
     protected QuoteCheckoutConnectorBusinessTester $tester;
 
-    /**
-     * @return void
-     */
     public function testDisallowCheckoutForQuoteThrowsException(): void
     {
         // Assert
@@ -56,9 +53,6 @@ class QuoteCheckoutConnectorFacadeTest extends Unit
         $this->tester->getFacade()->disallowCheckoutForQuote(new QuoteTransfer());
     }
 
-    /**
-     * @return void
-     */
     public function testDisallowCheckoutForQuoteAddsLockEntityToTheStorage(): void
     {
         // Arrange
@@ -77,9 +71,6 @@ class QuoteCheckoutConnectorFacadeTest extends Unit
         )->willReturn(null);
     }
 
-    /**
-     * @return void
-     */
     public function testDisallowCheckoutForQuoteAddsLockEntityToTheStorageUsesCustomerData(): void
     {
         // Arrange
@@ -100,9 +91,6 @@ class QuoteCheckoutConnectorFacadeTest extends Unit
         )->willReturn(null);
     }
 
-    /**
-     * @return void
-     */
     public function testIsCheckoutAllowedForQuoteReturnsTrue(): void
     {
         // Arrange
@@ -122,9 +110,6 @@ class QuoteCheckoutConnectorFacadeTest extends Unit
         $this->assertFalse($checkoutResponseTransfer->getIsSuccess());
     }
 
-    /**
-     * @return void
-     */
     public function testIsCheckoutAllowedForQuoteReturnsFalse(): void
     {
         // Arrange

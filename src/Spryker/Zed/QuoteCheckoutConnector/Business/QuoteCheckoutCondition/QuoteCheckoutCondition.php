@@ -52,11 +52,6 @@ class QuoteCheckoutCondition implements QuoteCheckoutConditionInterface
      */
     protected QuoteCheckoutConnectorToUtilTextServiceInterface $utilTextService;
 
-    /**
-     * @param \Spryker\Zed\QuoteCheckoutConnector\QuoteCheckoutConnectorConfig $config
-     * @param \Spryker\Zed\QuoteCheckoutConnector\Dependency\Client\QuoteCheckoutConnectorToStorageRedisClientInterface $storageRedisClient
-     * @param \Spryker\Zed\QuoteCheckoutConnector\Dependency\Service\QuoteCheckoutConnectorToUtilTextServiceInterface $utilTextService
-     */
     public function __construct(
         QuoteCheckoutConnectorConfig $config,
         QuoteCheckoutConnectorToStorageRedisClientInterface $storageRedisClient,
@@ -67,11 +62,6 @@ class QuoteCheckoutCondition implements QuoteCheckoutConditionInterface
         $this->utilTextService = $utilTextService;
     }
 
-    /**
-     * @param \Generated\Shared\Transfer\QuoteTransfer $quoteTransfer
-     *
-     * @return \Generated\Shared\Transfer\QuoteTransfer
-     */
     public function disallowCheckoutForQuote(QuoteTransfer $quoteTransfer): QuoteTransfer
     {
         $this->storageRedisClient->set($this->getLockKey($quoteTransfer), 'true', $this->config->getTtlQuoteCheckoutLock());
@@ -79,12 +69,6 @@ class QuoteCheckoutCondition implements QuoteCheckoutConditionInterface
         return $quoteTransfer;
     }
 
-    /**
-     * @param \Generated\Shared\Transfer\QuoteTransfer $quoteTransfer
-     * @param \Generated\Shared\Transfer\CheckoutResponseTransfer $checkoutResponseTransfer
-     *
-     * @return bool
-     */
     public function isCheckoutAllowedForQuote(QuoteTransfer $quoteTransfer, CheckoutResponseTransfer $checkoutResponseTransfer): bool
     {
         if ((bool)$this->storageRedisClient->get($this->getLockKey($quoteTransfer))) {
@@ -96,11 +80,6 @@ class QuoteCheckoutCondition implements QuoteCheckoutConditionInterface
         return false;
     }
 
-    /**
-     * @param \Generated\Shared\Transfer\QuoteTransfer $quoteTransfer
-     *
-     * @return string
-     */
     protected function getLockKey(QuoteTransfer $quoteTransfer): string
     {
         return sprintf(
@@ -110,11 +89,6 @@ class QuoteCheckoutCondition implements QuoteCheckoutConditionInterface
         );
     }
 
-    /**
-     * @param \Generated\Shared\Transfer\QuoteTransfer $quoteTransfer
-     *
-     * @return string
-     */
     protected function buildGuestUniqueId(QuoteTransfer $quoteTransfer): string
     {
         $customerTransfer = $quoteTransfer->getCustomerOrFail();
@@ -129,23 +103,12 @@ class QuoteCheckoutCondition implements QuoteCheckoutConditionInterface
         return $this->utilTextService->hashValue($hashValue, Hash::MD5);
     }
 
-    /**
-     * @param \Generated\Shared\Transfer\QuoteTransfer $quoteTransfer
-     * @param \Generated\Shared\Transfer\CheckoutResponseTransfer $checkoutResponseTransfer
-     *
-     * @return void
-     */
     protected function addErrorToCheckoutResponseTransfer(QuoteTransfer $quoteTransfer, CheckoutResponseTransfer $checkoutResponseTransfer): void
     {
         $checkoutErrorTransfer = $this->createCheckoutErrorTransfer($quoteTransfer);
         $checkoutResponseTransfer->addError($checkoutErrorTransfer)->setIsSuccess(false);
     }
 
-    /**
-     * @param \Generated\Shared\Transfer\QuoteTransfer $quoteTransfer
-     *
-     * @return \Generated\Shared\Transfer\CheckoutErrorTransfer
-     */
     protected function createCheckoutErrorTransfer(QuoteTransfer $quoteTransfer): CheckoutErrorTransfer
     {
         $checkoutErrorTransfer = new CheckoutErrorTransfer();
