@@ -26,8 +26,6 @@ class QuoteCheckoutConnectorConfig extends AbstractBundleConfig
      * - Returns the time to live for a lock that prevents a quote from checkout.
      *
      * @api
-     *
-     * @return int
      */
     public function getTtlQuoteCheckoutLock(): int
     {
@@ -39,11 +37,24 @@ class QuoteCheckoutConnectorConfig extends AbstractBundleConfig
      * - Returns the namespace for the storage lock keys.
      *
      * @api
-     *
-     * @return string
      */
     public function getQuoteCheckoutLockStorageNamespace(): string
     {
         return static::STORAGE_QUOTE_CHECKOUT_LOCK_NAMESPACE;
+    }
+
+    /**
+     * Specification:
+     * - Returns `QuoteTransfer.source` values exempt from the guest name+email duplicate-checkout lock.
+     * - Exists for non-interactive checkout entry points (e.g. an API order-intake pipeline) that build a
+     *   fresh quote per request without a `uuid`.
+     *
+     * @api
+     *
+     * @return array<string>
+     */
+    public function getQuoteCheckoutLockExemptSources(): array
+    {
+        return [];
     }
 }

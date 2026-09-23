@@ -9,6 +9,9 @@
     <transfer name="Quote">
         <property name="uuid" type="string"/>
         <property name="customer" type="Customer"/>
+        <property name="source" type="string"/>
+        <property name="customerReference" type="string"/>
+        <property name="orderCustomReference" type="string"/>
     </transfer>
 
     <transfer name="CheckoutError">

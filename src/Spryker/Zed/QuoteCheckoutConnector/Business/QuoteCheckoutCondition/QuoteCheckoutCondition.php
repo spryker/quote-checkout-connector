@@ -17,39 +17,20 @@ use Spryker\Zed\QuoteCheckoutConnector\QuoteCheckoutConnectorConfig;
 
 class QuoteCheckoutCondition implements QuoteCheckoutConditionInterface
 {
-    /**
-     * @var string
-     */
-    protected const GLOSSARY_KEY_DUPLICATE_ORDER_PROCESSING = 'checkout.error.duplicate-order-processing';
+    protected const string GLOSSARY_KEY_DUPLICATE_ORDER_PROCESSING = 'checkout.error.duplicate-order-processing';
 
-    /**
-     * @var string
-     */
-    protected const DUPLICATE_ORDER_LOCKED_QUOTE_ID_PARAMETER = '%quote-uid%';
+    protected const string DUPLICATE_ORDER_LOCKED_QUOTE_ID_PARAMETER = '%quote-uid%';
 
-    /**
-     * @var string
-     */
-    protected const LOCK_KEY_PLACEHOLDER = '%s:%s';
+    protected const string LOCK_KEY_PLACEHOLDER = '%s:%s';
 
-    /**
-     * @var string
-     */
-    protected const GUEST_HASH_VALUE_PLACEHOLDER = '%s-%s-%s';
+    protected const string GUEST_HASH_VALUE_PLACEHOLDER = '%s-%s-%s';
 
-    /**
-     * @var \Spryker\Zed\QuoteCheckoutConnector\QuoteCheckoutConnectorConfig
-     */
+    protected const string ORDER_CUSTOM_REFERENCE_HASH_VALUE_PLACEHOLDER = '%s-%s';
+
     protected QuoteCheckoutConnectorConfig $config;
 
-    /**
-     * @var \Spryker\Zed\QuoteCheckoutConnector\Dependency\Client\QuoteCheckoutConnectorToStorageRedisClientInterface
-     */
     protected QuoteCheckoutConnectorToStorageRedisClientInterface $storageRedisClient;
 
-    /**
-     * @var \Spryker\Zed\QuoteCheckoutConnector\Dependency\Service\QuoteCheckoutConnectorToUtilTextServiceInterface
-     */
     protected QuoteCheckoutConnectorToUtilTextServiceInterface $utilTextService;
 
     public function __construct(
@@ -64,14 +45,26 @@ class QuoteCheckoutCondition implements QuoteCheckoutConditionInterface
 
     public function disallowCheckoutForQuote(QuoteTransfer $quoteTransfer): QuoteTransfer
     {
-        $this->storageRedisClient->set($this->getLockKey($quoteTransfer), 'true', $this->config->getTtlQuoteCheckoutLock());
+        $lockKey = $this->getLockKey($quoteTransfer);
+
+        if ($lockKey === null) {
+            return $quoteTransfer;
+        }
+
+        $this->storageRedisClient->set($lockKey, 'true', $this->config->getTtlQuoteCheckoutLock());
 
         return $quoteTransfer;
     }
 
     public function isCheckoutAllowedForQuote(QuoteTransfer $quoteTransfer, CheckoutResponseTransfer $checkoutResponseTransfer): bool
     {
-        if ((bool)$this->storageRedisClient->get($this->getLockKey($quoteTransfer))) {
+        $lockKey = $this->getLockKey($quoteTransfer);
+
+        if ($lockKey === null) {
+            return false;
+        }
+
+        if ((bool)$this->storageRedisClient->get($lockKey)) {
             $this->addErrorToCheckoutResponseTransfer($quoteTransfer, $checkoutResponseTransfer);
 
             return true;
@@ -80,13 +73,38 @@ class QuoteCheckoutCondition implements QuoteCheckoutConditionInterface
         return false;
     }
 
-    protected function getLockKey(QuoteTransfer $quoteTransfer): string
+    protected function getLockKey(QuoteTransfer $quoteTransfer): ?string
     {
+        $discriminator = $this->buildLockDiscriminator($quoteTransfer);
+
+        if ($discriminator === null) {
+            return null;
+        }
+
         return sprintf(
             static::LOCK_KEY_PLACEHOLDER,
             $this->config->getQuoteCheckoutLockStorageNamespace(),
-            $quoteTransfer->getUuid() ?? $this->buildGuestUniqueId($quoteTransfer),
+            $discriminator,
         );
+    }
+
+    protected function buildLockDiscriminator(QuoteTransfer $quoteTransfer): ?string
+    {
+        if ($quoteTransfer->getUuid() !== null) {
+            return $quoteTransfer->getUuid();
+        }
+
+        if ($this->isLockExemptSource($quoteTransfer)) {
+            return $this->buildOrderCustomReferenceUniqueId($quoteTransfer);
+        }
+
+        return $this->buildGuestUniqueId($quoteTransfer);
+    }
+
+    protected function isLockExemptSource(QuoteTransfer $quoteTransfer): bool
+    {
+        return $quoteTransfer->getSource() !== null
+            && in_array($quoteTransfer->getSource(), $this->config->getQuoteCheckoutLockExemptSources(), true);
     }
 
     protected function buildGuestUniqueId(QuoteTransfer $quoteTransfer): string
@@ -98,6 +116,23 @@ class QuoteCheckoutCondition implements QuoteCheckoutConditionInterface
             $customerTransfer->getFirstName(),
             $customerTransfer->getLastName(),
             $customerTransfer->getEmail(),
+        );
+
+        return $this->utilTextService->hashValue($hashValue, Hash::MD5);
+    }
+
+    protected function buildOrderCustomReferenceUniqueId(QuoteTransfer $quoteTransfer): ?string
+    {
+        $orderCustomReference = $quoteTransfer->getOrderCustomReference();
+
+        if ($orderCustomReference === null || $orderCustomReference === '') {
+            return null;
+        }
+
+        $hashValue = sprintf(
+            static::ORDER_CUSTOM_REFERENCE_HASH_VALUE_PLACEHOLDER,
+            $quoteTransfer->getCustomerReference(),
+            $orderCustomReference,
         );
 
         return $this->utilTextService->hashValue($hashValue, Hash::MD5);

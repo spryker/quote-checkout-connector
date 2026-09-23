@@ -17,10 +17,6 @@ interface QuoteCheckoutConnectorFacadeInterface
      * - Disallows quote checkout for the configured amount of seconds.
      *
      * @api
-     *
-     * @param \Generated\Shared\Transfer\QuoteTransfer $quoteTransfer
-     *
-     * @return \Generated\Shared\Transfer\QuoteTransfer
      */
     public function disallowCheckoutForQuote(QuoteTransfer $quoteTransfer): QuoteTransfer;
 
@@ -29,11 +25,6 @@ interface QuoteCheckoutConnectorFacadeInterface
      * - Checks that quote checkout is allowed.
      *
      * @api
-     *
-     * @param \Generated\Shared\Transfer\QuoteTransfer $quoteTransfer
-     * @param \Generated\Shared\Transfer\CheckoutResponseTransfer $checkoutResponseTransfer
-     *
-     * @return bool
      */
     public function isCheckoutAllowedForQuote(QuoteTransfer $quoteTransfer, CheckoutResponseTransfer $checkoutResponseTransfer): bool;
 }

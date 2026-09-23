@@ -12,7 +12,10 @@ use Generated\Shared\Transfer\CheckoutResponseTransfer;
 use Generated\Shared\Transfer\CustomerTransfer;
 use Generated\Shared\Transfer\QuoteTransfer;
 use Spryker\Shared\Kernel\Transfer\Exception\NullValueException;
+use Spryker\Zed\QuoteCheckoutConnector\Business\QuoteCheckoutCondition\QuoteCheckoutCondition;
 use Spryker\Zed\QuoteCheckoutConnector\Dependency\Client\QuoteCheckoutConnectorToStorageRedisClientInterface;
+use Spryker\Zed\QuoteCheckoutConnector\Dependency\Service\QuoteCheckoutConnectorToUtilTextServiceInterface;
+use Spryker\Zed\QuoteCheckoutConnector\QuoteCheckoutConnectorConfig;
 use Spryker\Zed\QuoteCheckoutConnector\QuoteCheckoutConnectorDependencyProvider;
 use SprykerTest\Zed\QuoteCheckoutConnector\QuoteCheckoutConnectorBusinessTester;
 
@@ -39,9 +42,6 @@ class QuoteCheckoutConnectorFacadeTest extends Unit
      */
     protected const LOCK_STORAGE_KEY_UUID = 'test_uuid';
 
-    /**
-     * @var \SprykerTest\Zed\QuoteCheckoutConnector\QuoteCheckoutConnectorBusinessTester
-     */
     protected QuoteCheckoutConnectorBusinessTester $tester;
 
     public function testDisallowCheckoutForQuoteThrowsException(): void
@@ -127,5 +127,117 @@ class QuoteCheckoutConnectorFacadeTest extends Unit
         // Assert
         $this->assertFalse($result);
         $this->assertNull($checkoutResponseTransfer->getIsSuccess());
+    }
+
+    public function testDisallowCheckoutForQuoteLocksOnOrderCustomReferenceForExemptSource(): void
+    {
+        // Arrange
+        $storageRedisClientMock = $this->createMock(QuoteCheckoutConnectorToStorageRedisClientInterface::class);
+        $storageRedisClientMock->expects($this->once())->method('set')->with(
+            $this->equalTo('quote:checkout:lock:16a47c01eefe88e00470c53d6fac9ce6'),
+        );
+        $quoteCheckoutCondition = $this->createQuoteCheckoutConditionWithExemptSource($storageRedisClientMock);
+        $quoteTransfer = (new QuoteTransfer())
+            ->setSource('api')
+            ->setCustomerReference('DE--1')
+            ->setOrderCustomReference('PO-123');
+
+        // Act
+        $quoteCheckoutCondition->disallowCheckoutForQuote($quoteTransfer);
+    }
+
+    public function testDisallowCheckoutForQuoteDoesNotLockExemptSourceQuoteWithNoOrderCustomReference(): void
+    {
+        // Arrange
+        $storageRedisClientMock = $this->createMock(QuoteCheckoutConnectorToStorageRedisClientInterface::class);
+        $storageRedisClientMock->expects($this->never())->method('set');
+        $quoteCheckoutCondition = $this->createQuoteCheckoutConditionWithExemptSource($storageRedisClientMock);
+        $quoteTransfer = (new QuoteTransfer())
+            ->setSource('api')
+            ->setCustomerReference('DE--1');
+
+        // Act
+        $resultQuoteTransfer = $quoteCheckoutCondition->disallowCheckoutForQuote($quoteTransfer);
+
+        // Assert
+        $this->assertSame($quoteTransfer, $resultQuoteTransfer);
+    }
+
+    public function testIsCheckoutAllowedForQuoteReturnsTrueWhenOrderCustomReferenceLockExistsForExemptSource(): void
+    {
+        // Arrange
+        $storageRedisClientMock = $this->createMock(QuoteCheckoutConnectorToStorageRedisClientInterface::class);
+        $storageRedisClientMock->method('get')->with(
+            $this->equalTo('quote:checkout:lock:16a47c01eefe88e00470c53d6fac9ce6'),
+        )->willReturn(true);
+        $quoteCheckoutCondition = $this->createQuoteCheckoutConditionWithExemptSource($storageRedisClientMock);
+        $quoteTransfer = (new QuoteTransfer())
+            ->setSource('api')
+            ->setCustomerReference('DE--1')
+            ->setOrderCustomReference('PO-123');
+        $checkoutResponseTransfer = new CheckoutResponseTransfer();
+
+        // Act
+        $result = $quoteCheckoutCondition->isCheckoutAllowedForQuote($quoteTransfer, $checkoutResponseTransfer);
+
+        // Assert
+        $this->assertTrue($result);
+        $this->assertFalse($checkoutResponseTransfer->getIsSuccess());
+    }
+
+    public function testIsCheckoutAllowedForQuoteReturnsFalseForExemptSourceQuoteWithNoOrderCustomReference(): void
+    {
+        // Arrange
+        $storageRedisClientMock = $this->createMock(QuoteCheckoutConnectorToStorageRedisClientInterface::class);
+        $storageRedisClientMock->expects($this->never())->method('get');
+        $quoteCheckoutCondition = $this->createQuoteCheckoutConditionWithExemptSource($storageRedisClientMock);
+        $quoteTransfer = (new QuoteTransfer())
+            ->setSource('api')
+            ->setCustomerReference('DE--1');
+        $checkoutResponseTransfer = new CheckoutResponseTransfer();
+
+        // Act
+        $result = $quoteCheckoutCondition->isCheckoutAllowedForQuote($quoteTransfer, $checkoutResponseTransfer);
+
+        // Assert
+        $this->assertFalse($result);
+        $this->assertNull($checkoutResponseTransfer->getIsSuccess());
+    }
+
+    public function testDisallowCheckoutForQuoteUsesGuestHashWhenSourceIsNotExempt(): void
+    {
+        // Arrange
+        $storageRedisClientMock = $this->createMock(QuoteCheckoutConnectorToStorageRedisClientInterface::class);
+        $storageRedisClientMock->expects($this->once())->method('set')->with(
+            $this->equalTo('quote:checkout:lock:6a5296f8c258dc97c8fa7697812fdf46'),
+        );
+        $this->tester->setDependency(QuoteCheckoutConnectorDependencyProvider::CLIENT_STORAGE_REDIS, $storageRedisClientMock);
+        $quoteTransfer = (new QuoteTransfer())
+            ->setCustomerReference('DE--1')
+            ->setOrderCustomReference('PO-123')
+            ->setCustomer(
+                (new CustomerTransfer())->setFirstName('Spryker')->setLastName('oscar')->setEmail('oscar@spryker.com'),
+            );
+
+        // Act
+        $this->tester->getFacade()->disallowCheckoutForQuote($quoteTransfer);
+    }
+
+    protected function createQuoteCheckoutConditionWithExemptSource(
+        QuoteCheckoutConnectorToStorageRedisClientInterface $storageRedisClientMock,
+    ): QuoteCheckoutCondition {
+        $configWithExemptSource = new class extends QuoteCheckoutConnectorConfig {
+            public function getQuoteCheckoutLockExemptSources(): array
+            {
+                return ['api'];
+            }
+        };
+
+        $utilTextServiceMock = $this->createMock(QuoteCheckoutConnectorToUtilTextServiceInterface::class);
+        $utilTextServiceMock->method('hashValue')->willReturnCallback(
+            fn (string $value, string $algorithm): string => hash($algorithm, $value),
+        );
+
+        return new QuoteCheckoutCondition($configWithExemptSource, $storageRedisClientMock, $utilTextServiceMock);
     }
 }

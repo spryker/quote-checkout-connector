@@ -23,8 +23,6 @@ class QuoteCheckoutConnectorToStorageRedisClientBridge implements QuoteCheckoutC
     }
 
     /**
-     * @param string $key
-     *
      * @return mixed
      */
     public function get(string $key)
@@ -33,10 +31,6 @@ class QuoteCheckoutConnectorToStorageRedisClientBridge implements QuoteCheckoutC
     }
 
     /**
-     * @param string $key
-     * @param string $value
-     * @param int|null $ttl
-     *
      * @return mixed
      */
     public function set(string $key, string $value, ?int $ttl = null)

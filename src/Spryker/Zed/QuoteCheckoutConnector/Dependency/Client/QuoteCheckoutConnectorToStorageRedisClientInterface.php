@@ -10,17 +10,11 @@ namespace Spryker\Zed\QuoteCheckoutConnector\Dependency\Client;
 interface QuoteCheckoutConnectorToStorageRedisClientInterface
 {
     /**
-     * @param string $key
-     *
      * @return mixed
      */
     public function get(string $key);
 
     /**
-     * @param string $key
-     * @param string $value
-     * @param int|null $ttl
-     *
      * @return mixed
      */
     public function set(string $key, string $value, ?int $ttl = null);
